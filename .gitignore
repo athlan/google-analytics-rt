@@ -2,3 +2,4 @@
 
 /config/config.php
 /config/credentials/*
+!/config/credentials/.gitkeep
