@@ -22,9 +22,9 @@ Created with ❤ for majsterkowo.pl to support the [Analogue Counter of Active U
    * Type the name of the account and select *Furnish a new private key*.
    * Download the .json credentials file. Remember the client email like *your-client-name@your-project-id.iam.gserviceaccount.com*
 3. Login to the Google Analytics
-   * Go to the Administration and add the Service Account you just created (email from step 2).
+   * Go to the Administration and add the new read-only user which email is as the Service Account email you just created (email from step 2).
    * Go to the your webpage administration, and copy the View ID from View Settings. Write it down. 
-4. Copy the `/config/config.php.diff` to the `/config/config.php.diff`
+4. Copy the `/config/config.php.diff` to the `/config/config.php`
    * Copy the downloaded .json credentials file to the `/config/credentials` and point this file in `config.php`.
 5. Your service is configured. You can access the stats by invoking address:
     ```
