@@ -1,0 +1,8 @@
+<?php
+
+return [
+    "authConfig" => __DIR__ . "/credentials/XXXX.json",
+
+    // enable below when needed
+    // "cacert" => __DIR__ . "/cacert.pem",
+];
