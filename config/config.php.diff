@@ -3,6 +3,18 @@
 return [
     "authConfig" => __DIR__ . "/credentials/XXXX.json",
 
+    "cache" => [
+        "ttl" => 5,
+    ],
+    "cache_pool" => [
+        "default" => [
+            "driver" => "Stash\\Driver\\FileSystem",
+            "options" => [
+                "path" => __DIR__ . "/../var/cache",
+            ],
+        ],
+    ],
+
     // enable below when needed
     // "cacert" => __DIR__ . "/cacert.pem",
 ];

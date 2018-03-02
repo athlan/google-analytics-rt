@@ -1,5 +1,8 @@
 <?php
 
+use Stash\Interfaces\PoolInterface;
+use Stash\Invalidation;
+
 require_once 'vendor/autoload.php';
 $config = require 'config/config.php';
 
@@ -34,7 +37,7 @@ $googleServiceAnalyticsFactory = function($clientFactory) {
 /**
  * @param Google_Service_Analytics $service
  * @param $profileId
- * @return int
+ * @return array
  */
 $getRealTimeActiveUsers = function (Google_Service_Analytics $service, $profileId) {
     /* @var $result Google_Service_Analytics_RealtimeData */
@@ -45,11 +48,68 @@ $getRealTimeActiveUsers = function (Google_Service_Analytics $service, $profileI
 
     $totals = $result->getTotalsForAllResults();
 
-    return (int) $totals['rt:activeUsers'];
+    return [
+        'time' => time(),
+        'result' => (int) $totals['rt:activeUsers'],
+    ];
+};
+
+
+/**
+ * @param string $cacheManagerName
+ * @return PoolInterface
+ */
+$cacheFactory = function ($cacheManagerName = "default") use ($config) {
+    $cacheManagerConfig = $config['cache_pool'][$cacheManagerName];
+    $driverName = $cacheManagerConfig['driver'];
+    $driverOptions = $cacheManagerConfig['options'];
+    $driver = new $driverName($driverOptions);
+    return new Stash\Pool($driver);
+};
+
+/**
+ * @param callable $callback
+ * @param PoolInterface $cache
+ * @param $cacheKey
+ * @param $ttl
+ *
+ * @return mixed
+ */
+$runCached = function (callable $callback, PoolInterface $cache, $cacheKey, $ttl) {
+    $item = $cache->getItem($cacheKey);
+    $item->setInvalidationMethod(Invalidation::OLD);
+
+    if (!$item->isHit()) {
+        $item->lock();
+
+        $result = $callback();
+
+        $item->setTTL($ttl);
+        $item->set($result);
+
+        $cache->save($item);
+    }
+    else {
+        $result = $item->get();
+    }
+
+    return $result;
 };
 
 $profileId = filter_input(INPUT_GET, "profileId", FILTER_SANITIZE_NUMBER_INT);
 
-$service = $googleServiceAnalyticsFactory($googleClientFactory);
+$getRealTimeActiveUsersCached = function ($profileId) use ($runCached, $getRealTimeActiveUsers, $googleClientFactory, $googleServiceAnalyticsFactory, $cacheFactory, $config) {
+    $cache = $cacheFactory();
+    $cacheKey = "ga-rt/activeUsers/" . $profileId;
+    $ttl = $config['cache']['ttl'];
 
-echo $getRealTimeActiveUsers($service, $profileId);
+    return $runCached(function() use ($profileId, $getRealTimeActiveUsers, $googleClientFactory, $googleServiceAnalyticsFactory) {
+        $service = $googleServiceAnalyticsFactory($googleClientFactory);
+        return $getRealTimeActiveUsers($service, $profileId);
+    }, $cache, $cacheKey, $ttl);
+};
+
+$result = $getRealTimeActiveUsersCached($profileId);
+
+header("Last-Modified: " . date("r", $result['time']));
+echo $result['result'];
